@@ -52,7 +52,7 @@ class ICMAnalyzer:
         print(f"Total incidents before {year}-{month}: {len(old_incidents)}")
         return old_incidents
 
-class ICMResolver:
+class ICMMitigater:
     def __init__(self, uri, bearer_token, incidents):
         self.uri = uri
         self.headers = {
@@ -80,18 +80,59 @@ class ICMResolver:
             }
         }
 
-        resolve_uri = f"{self.uri}({incident_id})/MitigateIncident"
-        print("Resolve:", resolve_uri)
+        mitigate_uri = f"{self.uri}({incident_id})/MitigateIncident"
+        print("mitigate:", mitigate_uri)
+        response = requests.post(mitigate_uri, headers=self.headers, json=payload)
+        if response.status_code == 200:
+            print(f"Incident {incident_id} mitigated successfully.")
+        else:
+            print(f"Failed to mitigate incident: {response.status_code} - {response.text}")
+
+class ICMResolver:
+    def __init__(self, uri, bearer_token, incidents):
+        self.uri = uri
+        self.headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json"
+        }
+        self.incidents = incidents
+
+
+    def resolve_incidents(self):
+        #for incident in self.incidents:
+        #    incident_id = incident.get("Id")
+        #    if not incident_id:
+        #        print("Incident ID not found, skipping resolution.")
+        #        continue
+        
+        incident_id = "560602092" #Example Incident ID
+        resolve_uri = f"{self.uri}({incident_id})/ResolveIncident"
+
+        payload = {
+            "ResolveParameters" : {
+                "IsCustomerImpacting" : "False", 
+                "IsNoise" : "True", 
+                "Description" : { 
+                    "Text" : "Resolving from the script", 
+                    "RenderType" : "Plaintext"
+                }, 
+                "ResolveContactAlias" : "b-pnagkn" 
+                }   
+        }
+        
+        print(f"Resolving URI: {resolve_uri}")
+        
         response = requests.post(resolve_uri, headers=self.headers, json=payload)
+        
         if response.status_code == 200:
             print(f"Incident {incident_id} resolved successfully.")
         else:
             print(f"Failed to resolve incident {incident_id}: {response.status_code} - {response.text}")
-
+        
 
 if __name__ == "__main__":
-#  uri = os.getenv("ICM_URI")
-    resolver_uri = os.getenv("ICM_RESOLVE_URI")
+#  uri = os.getenv("ICM_LIST_URI")
+    mitigater_uri = os.getenv("ICM_URI")
     bearer_token = os.getenv("ICM_BEARER_TOKEN")
 
 #   fetcher = ICMFetcher(uri, bearer_token)
@@ -104,5 +145,8 @@ if __name__ == "__main__":
 #       print("Incident ID & Titile:", incident.get("Id"), incident.get("Title"), "CreatedDate:", incident.get("CreatedDate"))
 
 
-    resolver = ICMResolver(resolver_uri, bearer_token, [])
-    resolver.mitigate_incidents()
+ #   mitigater = ICMMitigater(mitigater_uri, bearer_token, [])
+ #   mitigater.mitigate_incidents()
+
+    resolver = ICMResolver(mitigater_uri, bearer_token, [])
+    resolver.resolve_incidents()
