@@ -30,27 +30,35 @@ class ICMFetcher:
 
 class ICMAnalyzer:
     def __init__(self, incidents):
-       self.incidents = incidents
+        self.incidents = incidents
 
-    def list_titles_before(self, year, month):
-        cutoff = datetime(year, month, 1, tzinfo=UTC)
-        old_incidents = []
+    def list_titles_before(self):
+        cutoff = datetime(2025, 5, 1, tzinfo=UTC)
+        grouped = {}
         for incident in self.incidents:
             created_str = incident.get("CreatedDate")
+            owner = incident.get("ContactAlias")
             if created_str:
                 try:
                     try:
                         created_date = datetime.strptime(created_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
                     except ValueError:
                         created_date = datetime.strptime(created_str[:10], "%Y-%m-%d").replace(tzinfo=UTC)
-                    if created_date < cutoff:
-                        print(f"Title: {incident.get('Title', 'Unknown')} | CreatedDate: {created_str}")
-                        old_incidents.append(incident)
+                    if created_date < cutoff and not owner:
+                        title = incident.get('Title', 'Unknown')
+                        if title not in grouped:
+                            grouped[title] = []
+                        grouped[title].append(incident)
                 except Exception as e:
                     print(f"Error parsing date '{created_str}': {e}")
                     continue
-        print(f"Total incidents before {year}-{month}: {len(old_incidents)}")
-        return old_incidents
+        # Print grouped results
+        for title, incidents in grouped.items():
+            print(f"Title: {title} (Count: {len(incidents)})")
+            for inc in incidents:
+                print(f"  Id: {inc.get('Id')}, CreatedDate: {inc.get('CreatedDate')}")
+        print(f"Total grouped titles without owner before May 2025: {len(grouped)}")
+        return grouped
 
 class ICMMitigater:
     def __init__(self, uri, bearer_token, incidents):
@@ -67,15 +75,15 @@ class ICMMitigater:
  #          if not incident_id:
  #              print("Incident ID not found, skipping resolution.")
  #              continue
-        incident_id = "560602092" #Example Incident ID
+        incident_id = "612219907" #Example Incident ID
         res = requests.get("https://prod.microsofticm.com/api2/user/incidentapi/incidents(658065143)/GetIncidentDetails", headers= self.headers)
         
         payload = {
             "MitigateParameters": {
                 "IsCustomerImpacting": "False",
                 "IsNoise": "True",
-                "Mitigation": "This is a test mitigation executed from script",
-                "HowFixed": "This is considered to be noise",
+                "Mitigation": "Cleaning up IcMs which are created before April 1st, 2025 & have no owner",
+                "HowFixed": "Mitigated as part of cleanup process",
                 "MitigateContactAlias": "b-pnagkn"
             }
         }
@@ -131,22 +139,22 @@ class ICMResolver:
         
 
 if __name__ == "__main__":
-#  uri = os.getenv("ICM_LIST_URI")
+    uri = os.getenv("ICM_LIST_URI")
     mitigater_uri = os.getenv("ICM_URI")
     bearer_token = os.getenv("ICM_BEARER_TOKEN")
 
-#   fetcher = ICMFetcher(uri, bearer_token)
-#   incidents = fetcher.fetch_all_incidents()
+    fetcher = ICMFetcher(uri, bearer_token)
+    incidents = fetcher.fetch_all_incidents()
 
-#   analyzer = ICMAnalyzer(incidents)
-#   old_incidents = analyzer.list_titles_before(2025, 4)
+    analyzer = ICMAnalyzer(incidents)
+    old_incidents = analyzer.list_titles_before()
 
 #   for incident in old_incidents:
 #       print("Incident ID & Titile:", incident.get("Id"), incident.get("Title"), "CreatedDate:", incident.get("CreatedDate"))
 
 
- #   mitigater = ICMMitigater(mitigater_uri, bearer_token, [])
- #   mitigater.mitigate_incidents()
+    mitigater = ICMMitigater(mitigater_uri, bearer_token, [])
+    mitigater.mitigate_incidents()
 
-    resolver = ICMResolver(mitigater_uri, bearer_token, [])
-    resolver.resolve_incidents()
+    # resolver = ICMResolver(mitigater_uri, bearer_token, [])
+    # resolver.resolve_incidents()
