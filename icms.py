@@ -165,6 +165,74 @@ class ICMDescriber:
         else:
             print(f"Failed to describe incident: {response.status_code} - {response.text}") 
 
+    def describe_summary(self):
+        print(f"\nDescribing summary for incident with ID: {self.incident_id}")
+        #summary_uri = f"{self.uri}({self.incident_id})/GetIncidentSummary"
+        incidents = [ 624825916,
+            624819210,
+            624819001,
+            624806050,
+            624724968,
+            624695205,
+            624687296,
+            624687295,
+            624651544,
+            624573187,
+            624542681,
+            624516278,
+            624483906,
+            624419082,
+            624397677,
+            624312521,
+            624277578,
+            624275392,
+            624256991,
+            624169235,
+            624097780,
+            624035657,
+            623995048,
+            623990327,
+            623946652,
+            623944254,
+            623919977,
+            623890134,
+            623865464,
+            623860014,
+            623843558,
+            623746905,
+            623734898,
+            623684494,
+            623360698,
+            623311484,
+            623010655,
+            623010108,
+            622548621,
+            622548613,
+            620356444,
+            618684907,
+            618018824 ]
+        
+        for incident_id in incidents:
+            summary_uri = f"https://prod.microsofticm.com/api2/user/incidentapi/incidents/{incident_id}/getdescriptionentries?$top=100&$skip=0"
+            response = requests.get(summary_uri, headers=self.headers)
+            noise_icms = []
+            
+            if response.status_code == 200:
+                summary_details = response.json()
+                for entry in summary_details["Items"]:
+                    print(f"\n\nDate: {entry.get('Date')}")
+                    #print(f"Text: {entry.get('Text')}")
+                    print(f"Submitted by: {entry.get('SubmittedBy')}")
+
+                    if "<div style" in entry.get('Text'):   
+                        print("HTML content detected, skipping this entry.")
+                        continue
+                    if entry.get('SubmittedBy') == "b-vsubramani":
+                        noise_icms.append({"incident": incident_id, "comment": entry.get('Text')})
+            else:
+                print(f"Failed to describe summary: {response.status_code} - {response.text}")
+        return noise_icms
+
 if __name__ == "__main__":
     uri = os.getenv("ICM_LIST_URI")
     mitigater_uri = os.getenv("ICM_URI")
@@ -176,9 +244,13 @@ if __name__ == "__main__":
     # analyzer = ICMAnalyzer(incidents)
     # old_incidents = analyzer.list_titles_before()
 
-    # describer = ICMDescriber(mitigater_uri, bearer_token, "380355203")
-    # describer.describe_incidents()
+    describer = ICMDescriber(mitigater_uri, bearer_token, "380355203")
+    describer.describe_incidents()
+    noisy_icms = describer.describe_summary()
 
+    print(f"Total noisy ICMs found: {(noisy_icms)}")
+
+    
     # mitigater = ICMMitigater(mitigater_uri, bearer_token, old_incidents)
     # mitigater.mitigate_incidents()
 
